@@ -31,8 +31,12 @@ export default class TableOverlay {
     this.title.setAttribute("href", link.URL);
 
     this.description.value = link.Description;
-    this.symbol.innerHTML = `simpurl/${link.Symbol}`;
-    // TODO not available -> this.note.textContent =
+
+    if (link.Symbol) {
+      this.symbol.value = `simpurl/${link.Symbol}`;
+    }
+
+    // TODO: not available -> this.note.textContent =
   }
 
   close() {
