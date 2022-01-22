@@ -1,5 +1,5 @@
 import TableOverlay from "./table-overlay.js";
-import { formatURL, getSessionToken } from "../helpers.js";
+import { formatURL } from "../helpers.js";
 
 export default class TableURL {
   constructor(containerSelector) {
@@ -48,6 +48,72 @@ export default class TableURL {
     window.open(this.selectedRow.firstChild.textContent, "_blank");
   }
 
+  addLink(link) {
+    this.data.links.push(link);
+    // TODO: add check if table defined
+    const body = document.querySelector("#table-links tbody");
+    const row = this._createRow(link);
+
+    row.classList.add("table-success");
+    setTimeout(() => {
+      row.classList.remove("table-success");
+    }, 2000);
+
+    body.prepend(row);
+
+    // close modal
+    document.querySelector("#close-new-link").click();
+  }
+
+  _createRow(link) {
+    const row = document.createElement("tr");
+
+    // manage row clicking
+    row.addEventListener("click", (event) => {
+      const target = event.currentTarget;
+      // check if same row already selected
+      if (target.classList.contains("table-light")) {
+        this.removeRowHighlight();
+        this.overlay.close();
+        return;
+      }
+      this.removeRowHighlight();
+      target.classList.add("table-light");
+
+      // find what to display by id
+      const link = this.data.links.find(
+        (link) => link.ID === Number.parseInt(target.dataset.id)
+      );
+      this.overlay.display(link);
+      this.overlay.open();
+    });
+
+    row.addEventListener("mouseenter", (event) => {
+      this.selectedRow = event.currentTarget;
+    });
+
+    row.addEventListener("mouseleave", () => {
+      this.selectedRow = null;
+    });
+
+    let content = "";
+    this.headers.forEach((header) => {
+      row.setAttribute(`data-${header}`, link[header]); // used by the search
+
+      // apply formatting if necessary
+      let text = link[header];
+      if (header in this.formatHeaders) {
+        text = this.formatHeaders[header](text);
+      }
+      content += `<td>${text}</td>`;
+    });
+    row.setAttribute("data-id", link.ID); // id used when showing the overlay
+
+    row.innerHTML = content;
+
+    return row;
+  }
+
   /**
    * Render a new table
    */
@@ -69,51 +135,7 @@ export default class TableURL {
 
     // create each row
     this.data.links.forEach((link) => {
-      const row = document.createElement("tr");
-
-      // manage row clicking
-      row.addEventListener("click", (event) => {
-        const target = event.currentTarget;
-        // check if same row already selected
-        if (target.classList.contains("table-light")) {
-          this.removeRowHighlight();
-          this.overlay.close();
-          return;
-        }
-        this.removeRowHighlight();
-        target.classList.add("table-light");
-
-        // find what to display by id
-        const link = this.data.links.find(
-          (link) => link.ID === Number.parseInt(target.dataset.id)
-        );
-        this.overlay.display(link);
-        this.overlay.open();
-      });
-
-      row.addEventListener("mouseenter", (event) => {
-        this.selectedRow = event.currentTarget;
-      });
-
-      row.addEventListener("mouseleave", () => {
-        this.selectedRow = null;
-      });
-
-      let content = "";
-      this.headers.forEach((header) => {
-        row.setAttribute(`data-${header}`, link[header]); // used by the search
-
-        // apply formatting if necessary
-        let text = link[header];
-        if (header in this.formatHeaders) {
-          text = this.formatHeaders[header](text);
-        }
-        content += `<td>${text}</td>`;
-      });
-      row.setAttribute("data-id", link.ID); // id used when showing the overlay
-
-      row.innerHTML = content;
-
+      const row = this._createRow(link);
       body.appendChild(row);
     });
 
@@ -151,7 +173,7 @@ export default class TableURL {
    * Get data from API
    * GET /api/links
    */
-  async getData() {
+  async _getData() {
     const token = window.localStorage.getItem("session");
     const limit = -1;
     const response = await fetch(this.url + "/links", {
